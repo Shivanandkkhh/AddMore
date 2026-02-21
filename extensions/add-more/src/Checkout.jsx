@@ -2,108 +2,22 @@ import "@shopify/ui-extensions/preact";
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
-const METAFIELD_NAMESPACE = "checkout_upsell";
-const METAFIELD_KEY = "product_ids";
-
+// 1. Export the extension
 export default function () {
   render(<Extension />, document.body);
 }
 
 function Extension() {
-  const { applyCartLinesChange, instructions, i18n, lines, query } = shopify;
+  const { applyCartLinesChange, query, i18n } = shopify;
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [addingVariantId, setAddingVariantId] = useState(null);
+  const [adding, setAdding] = useState(false);
   const [showError, setShowError] = useState(false);
+  const { lines } = shopify;
 
   useEffect(() => {
-    async function fetchProducts() {
-      setLoading(true);
-      try {
-        const configResult = await query(
-          `query UpsellConfig($namespace: String!, $key: String!) {
-            shop {
-              metafield(namespace: $namespace, key: $key) {
-                value
-              }
-            }
-          }`,
-          {
-            variables: {
-              namespace: METAFIELD_NAMESPACE,
-              key: METAFIELD_KEY,
-            },
-          },
-        );
-
-        const rawValue = configResult?.data?.shop?.metafield?.value;
-        if (!rawValue) {
-          setProducts([]);
-          return;
-        }
-
-        let productIds = [];
-        try {
-          productIds = JSON.parse(rawValue);
-        } catch {
-          productIds = [];
-        }
-
-        if (!Array.isArray(productIds) || productIds.length === 0) {
-          setProducts([]);
-          return;
-        }
-
-        const productsResult = await query(
-          `query UpsellProducts($ids: [ID!]!) {
-            nodes(ids: $ids) {
-              ... on Product {
-                id
-                title
-                images(first: 1) {
-                  nodes {
-                    url
-                  }
-                }
-                variants(first: 1) {
-                  nodes {
-                    id
-                    availableForSale
-                    price {
-                      amount
-                    }
-                  }
-                }
-              }
-            }
-          }`,
-          { variables: { ids: productIds } },
-        );
-
-        const productById = new Map();
-        const nodes = productsResult?.data?.nodes ?? [];
-
-        for (const node of nodes) {
-          if (!node) continue;
-          if (!node.variants?.nodes?.length) continue;
-          productById.set(node.id, node);
-        }
-
-        const orderedProducts = productIds
-          .map((id) => productById.get(id))
-          .filter(Boolean);
-
-        setProducts(orderedProducts);
-      } catch (error) {
-        console.error(error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchProducts();
-  }, [query]);
+  }, []);
 
   useEffect(() => {
     if (showError) {
@@ -113,17 +27,53 @@ function Extension() {
   }, [showError]);
 
   async function handleAddToCart(variantId) {
-    if (!instructions.value.lines.canAddCartLine) return;
-    setAddingVariantId(variantId);
+    setAdding(true);
     const result = await applyCartLinesChange({
       type: "addCartLine",
       merchandiseId: variantId,
       quantity: 1,
     });
-    setAddingVariantId(null);
+    setAdding(false);
     if (result.type === "error") {
       setShowError(true);
       console.error(result.message);
+    }
+  }
+
+  async function fetchProducts() {
+    setLoading(true);
+    try {
+      const { data } = await query(
+        `query ($first: Int!) {
+          products(first: $first) {
+            nodes {
+              id
+              title
+              images(first:1){
+                nodes {
+                  url
+                }
+              }
+              variants(first: 1) {
+                nodes {
+                  id
+                  price {
+                    amount
+                  }
+                }
+              }
+            }
+          }
+        }`,
+        {
+          variables: { first: 5 },
+        }
+      );
+      setProducts(data["products"].nodes);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -137,47 +87,14 @@ function Extension() {
     return null;
   }
 
-  const product = productsOnOffer[0];
-  const { images, title, variants } = product;
-  const renderPrice = i18n.formatCurrency(variants.nodes[0].price.amount);
-  const imageUrl =
-    images.nodes[0]?.url ??
-    "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_medium.png?format=webp&v=1530129081";
-
   return (
-    <s-stack gap="large-200">
-      <s-divider />
-      <s-heading>You might also like</s-heading>
-      <s-stack gap="base">
-        <s-grid
-          gap="base"
-          gridTemplateColumns="64px 1fr auto"
-          alignItems="center"
-        >
-          <s-image
-            borderWidth="base"
-            borderRadius="large-100"
-            src={imageUrl}
-            alt={title}
-            aspectRatio="1"
-          />
-          <s-stack gap="none">
-            <s-text type="strong">{title}</s-text>
-            <s-text color="subdued">{renderPrice}</s-text>
-          </s-stack>
-          <s-button
-            variant="secondary"
-            loading={Boolean(addingVariantId)}
-            disabled={!instructions.value.lines.canAddCartLine}
-            accessibilityLabel={`Add ${title} to cart`}
-            onClick={() => handleAddToCart(variants.nodes[0].id)}
-          >
-            Add
-          </s-button>
-        </s-grid>
-      </s-stack>
-      {showError && <ErrorBanner />}
-    </s-stack>
+    <ProductOffer
+      product={productsOnOffer[0]}
+      i18n={i18n}
+      adding={adding}
+      handleAddToCart={handleAddToCart}
+      showError={showError}
+    />
   );
 }
 
@@ -210,13 +127,53 @@ function getProductsOnOffer(lines, products) {
   const cartLineProductVariantIds = lines.map((item) => item.merchandise.id);
   return products.filter((product) => {
     const isProductVariantInCart = product.variants.nodes.some(({ id }) =>
-      cartLineProductVariantIds.includes(id),
+      cartLineProductVariantIds.includes(id)
     );
-    const isAvailable = product.variants.nodes.some(
-      ({ availableForSale }) => availableForSale,
-    );
-    return !isProductVariantInCart && isAvailable;
+    return !isProductVariantInCart;
   });
+}
+
+function ProductOffer({ product, i18n, adding, handleAddToCart, showError }) {
+  const { images, title, variants } = product;
+  const renderPrice = i18n.formatCurrency(variants.nodes[0].price.amount);
+  const imageUrl =
+    images.nodes[0]?.url ??
+    "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_medium.png?format=webp&v=1530129081";
+
+  return (
+    <s-stack gap="large-200">
+      <s-divider />
+      <s-heading>You might also like</s-heading>
+      <s-stack gap="base">
+        <s-grid
+          gap="base"
+          gridTemplateColumns="64px 1fr auto"
+          alignItems="center"
+        >
+          <s-image
+            borderWidth="base"
+            borderRadius="large-100"
+            src={imageUrl}
+            alt={title}
+            aspectRatio="1"
+          />
+          <s-stack gap="none">
+            <s-text type="strong">{title}</s-text>
+            <s-text color="subdued">{renderPrice}</s-text>
+          </s-stack>
+          <s-button
+            variant="secondary"
+            loading={adding}
+            accessibilityLabel={`Add ${title} to cart`}
+            onClick={() => handleAddToCart(variants.nodes[0].id)}
+          >
+            Add
+          </s-button>
+        </s-grid>
+      </s-stack>
+      {showError && <ErrorBanner />}
+    </s-stack>
+  );
 }
 
 function ErrorBanner() {
