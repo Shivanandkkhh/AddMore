@@ -1,0 +1,100 @@
+{{ 'theme-blocks.css' | asset_url | stylesheet_tag }}
+
+<div class="app-block-shell value-props-banner" {{ block.shopify_attributes }}>
+  {%- if block.settings.heading != blank -%}
+    <h3 class="app-block-heading">{{ block.settings.heading | escape }}</h3>
+  {%- endif -%}
+
+  {%- if block.settings.subheading != blank -%}
+    <p class="value-props-subheading">{{ block.settings.subheading | escape }}</p>
+  {%- endif -%}
+
+  {%- assign has_items = false -%}
+  {%- if block.settings.item_text_1 != blank or block.settings.item_text_2 != blank or block.settings.item_text_3 != blank -%}
+    {%- assign has_items = true -%}
+  {%- endif -%}
+
+  {%- if has_items -%}
+    <ul class="value-props-list" role="list">
+      {%- if block.settings.item_text_1 != blank -%}
+        <li class="value-props-item">
+          <span class="value-props-icon">{{ block.settings.item_icon_1 | escape }}</span>
+          <p class="value-props-text">{{ block.settings.item_text_1 | escape }}</p>
+        </li>
+      {%- endif -%}
+
+      {%- if block.settings.item_text_2 != blank -%}
+        <li class="value-props-item">
+          <span class="value-props-icon">{{ block.settings.item_icon_2 | escape }}</span>
+          <p class="value-props-text">{{ block.settings.item_text_2 | escape }}</p>
+        </li>
+      {%- endif -%}
+
+      {%- if block.settings.item_text_3 != blank -%}
+        <li class="value-props-item">
+          <span class="value-props-icon">{{ block.settings.item_icon_3 | escape }}</span>
+          <p class="value-props-text">{{ block.settings.item_text_3 | escape }}</p>
+        </li>
+      {%- endif -%}
+    </ul>
+  {%- elsif request.design_mode -%}
+    <p>Add value item text in block settings to populate this banner.</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Value Props Banner",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Why customers choose us"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Fast shipping, quality products, and trusted support"
+    },
+    {
+      "type": "text",
+      "id": "item_icon_1",
+      "label": "Item 1 icon (emoji)",
+      "default": "✅"
+    },
+    {
+      "type": "text",
+      "id": "item_text_1",
+      "label": "Item 1 text",
+      "default": "Free shipping over $50"
+    },
+    {
+      "type": "text",
+      "id": "item_icon_2",
+      "label": "Item 2 icon (emoji)",
+      "default": "⚡"
+    },
+    {
+      "type": "text",
+      "id": "item_text_2",
+      "label": "Item 2 text",
+      "default": "Ships in 24 hours"
+    },
+    {
+      "type": "text",
+      "id": "item_icon_3",
+      "label": "Item 3 icon (emoji)",
+      "default": "💬"
+    },
+    {
+      "type": "text",
+      "id": "item_text_3",
+      "label": "Item 3 text",
+      "default": "Responsive support"
+    }
+  ]
+}
+{% endschema %}

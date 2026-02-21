@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Checkout Recommendations",
+    "handle": "checkout_recommendations",
+    "description": "Show curated product recommendations with configurable heading, count, and collection source.",
+    "previewImageUrl": "/section-previews/checkout-recommendations.svg",
+    "category": "Upsell",
+    "badge": "Popular"
+  },
+  {
+    "name": "Featured Collection Tiles",
+    "handle": "featured_collection_tiles",
+    "description": "Display a responsive product tile grid from a selected collection with optional vendor labels.",
+    "previewImageUrl": "/section-previews/featured-collection-tiles.svg",
+    "category": "Collections",
+    "badge": "New"
+  },
+  {
+    "name": "Value Props Banner",
+    "handle": "value_props_banner",
+    "description": "Add a configurable value proposition strip with merchant-defined highlights and callout text.",
+    "previewImageUrl": "/section-previews/value-props-banner.svg",
+    "category": "Brand"
+  }
+]

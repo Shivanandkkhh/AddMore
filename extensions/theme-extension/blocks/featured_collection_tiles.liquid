@@ -1,0 +1,83 @@
+{{ 'theme-blocks.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign source_collection = block.settings.collection
+  assign products_limit = block.settings.products_to_show | at_least: 2 | at_most: 12
+-%}
+
+<div class="app-block-shell" {{ block.shopify_attributes }}>
+  {%- if block.settings.heading != blank -%}
+    <h3 class="app-block-heading">{{ block.settings.heading | escape }}</h3>
+  {%- endif -%}
+
+  {%- if source_collection != blank and source_collection.products_count > 0 -%}
+    <ul class="featured-collection-grid" role="list">
+      {%- for product in source_collection.products limit: products_limit -%}
+        <li>
+          <a href="{{ product.url }}" class="featured-collection-card" aria-label="{{ product.title | escape }}">
+            <div class="featured-collection-image-wrap">
+              {%- if product.featured_image != blank -%}
+                {{
+                  product.featured_image
+                  | image_url: width: 720
+                  | image_tag:
+                    class: 'featured-collection-image',
+                    widths: '320, 480, 640, 720',
+                    sizes: '(min-width: 990px) 25vw, (min-width: 750px) 33vw, 50vw',
+                    alt: product.featured_image.alt | default: product.title,
+                    loading: 'lazy'
+                }}
+              {%- else -%}
+                {{ 'product-1' | placeholder_svg_tag: 'featured-collection-image' }}
+              {%- endif -%}
+            </div>
+            <div class="featured-collection-body">
+              <p class="featured-collection-title">{{ product.title | escape }}</p>
+              {%- if block.settings.show_vendor -%}
+                <p class="featured-collection-vendor">{{ product.vendor | escape }}</p>
+              {%- endif -%}
+              <p class="featured-collection-price">{{ product.price | money }}</p>
+            </div>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- elsif request.design_mode -%}
+    <p>Select a collection to show this block.</p>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Featured Collection Tiles",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Featured collection"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Collection source"
+    },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "label": "Number of products",
+      "min": 2,
+      "max": 12,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "label": "Show vendor",
+      "default": false
+    }
+  ]
+}
+{% endschema %}
