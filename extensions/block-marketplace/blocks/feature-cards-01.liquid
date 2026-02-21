@@ -1,11 +1,17 @@
 <style>
   .hfc-container-{{ block.id }} {
     display: flex;
-    width: 100%;
+    {% if block.settings.full_width %}
+      width: 100%;
+      max-width: none;
+    {% else %}
+      width: 100%;
+      max-width: 1200px;
+    {% endif %}
     height: 720px;
     margin: 0 auto;
     overflow: hidden;
-    background-color: #000;
+    background-color: var(--idle-bg, #000);
   }
 
   .hfc-card {
@@ -55,6 +61,7 @@
     height: 100%;
     display: flex;
     align-items: center;
+    justify-content: center;
   }
 
   .hfc-image-wrap {
@@ -77,22 +84,22 @@
     transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
   }
 
-  /* On left card hover, move image to right and scale down */
+  /* On left card hover, move image down and scale */
   .hfc-card--left:hover .hfc-image-wrap {
-    left: auto;
-    right: 15%;
-    transform: translateY(-50%) translateX(20%);
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, 15%);
   }
 
   .hfc-card--left:hover .hfc-image-wrap img {
       transform: scale(0.65);
   }
 
-  /* On right card hover, move image to left and scale down */
+  /* On right card hover, move image down and scale */
   .hfc-card--right:hover .hfc-image-wrap {
-    left: 15%;
+    left: 50%;
     right: auto;
-    transform: translateY(-50%) translateX(-20%);
+    transform: translate(-50%, 15%);
   }
 
   .hfc-card--right:hover .hfc-image-wrap img {
@@ -102,45 +109,48 @@
   /* Text Content */
   .hfc-text-content {
     position: absolute;
-    width: 60%;
+    width: 80%;
     max-width: 600px;
     padding: 0 40px;
     opacity: 0;
     transition: opacity 0.4s ease 0.1s, transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
     color: #fff;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .hfc-card--left .hfc-text-content {
-    left: 8%;
-    transform: translateX(-30px);
+    transform: translate(-50%, -60%);
   }
 
   .hfc-card--left:hover .hfc-text-content {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(-50%, -85%);
     pointer-events: auto;
   }
 
   .hfc-card--right .hfc-text-content {
-    right: 8%;
-    transform: translateX(30px);
+    transform: translate(-50%, -60%);
   }
 
   .hfc-card--right:hover .hfc-text-content {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(-50%, -85%);
     pointer-events: auto;
   }
 
-  /* Typography elements */
   .hfc-title {
     font-family: 'Playfair Display', serif;
     font-size: 64px;
     font-weight: 400;
     line-height: 1.1;
     text-align: center;
-    margin-bottom: 60px;
+    margin-bottom: 20px;
     color: #ffffff;
     margin-top: 0;
   }
@@ -151,6 +161,7 @@
     flex-direction: column;
     gap: 12px;
     width: 100%;
+    max-width: 400px;
   }
 
   .hfc-stat-item {
@@ -353,6 +364,12 @@
   "name": "Hover Feature Cards",
   "target": "section",
   "settings": [
+    {
+      "type": "checkbox",
+      "id": "full_width",
+      "label": "Enable Full Width",
+      "default": true
+    },
     {
       "type": "header",
       "content": "Global Colors"

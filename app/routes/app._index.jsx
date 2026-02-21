@@ -8,7 +8,11 @@ export const loader = async ({ request }) => {
 };
 
 export default function Index() {
-  const [activated, setActivated] = useState(false);
+  const [activatedBlocks, setActivatedBlocks] = useState({});
+
+  const handleActivate = (id) => {
+    setActivatedBlocks((prev) => ({ ...prev, [id]: true }));
+  };
 
   const blocks = [
     {
@@ -29,30 +33,51 @@ export default function Index() {
       description: "A 9:16 mobile-first video player for User Generated Content. Features autoplay and mute toggles.",
       image: "https://cdn.shopify.com/b/shopify-brochure2-assets/8ebc70bb3f56d953d6abdb1762c4eaeb.png",
     },
+    {
+      id: 4,
+      title: "Hover Feature Cards",
+      description: "Side-by-side expandable feature cards with customizable gradients and interactive hover animations.",
+      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png",
+    },
+    {
+      id: 5,
+      title: "Lookbook Section",
+      description: "Interactive image lookbook with shoppable hotspots that display product information on hover.",
+      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-collection-1_large.png",
+    },
+    {
+      id: 6,
+      title: "FAQ Section",
+      description: "An accordion-style FAQ section to answer common customer questions and improve conversion.",
+      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-lifestyle-1_large.png",
+    },
+    {
+      id: 7,
+      title: "Before & After Section",
+      description: "An interactive slider to compare two images side-by-side, perfect for showcasing results.",
+      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-6_large.png",
+    },
   ];
 
   return (
     <s-page heading="Theme Block Marketplace">
       <div style={{ padding: "0 20px" }}>
-        {activated ? (
+        {Object.keys(activatedBlocks).length > 0 ? (
           <div style={{ padding: '15px', backgroundColor: '#e3f1df', color: '#1a5525', borderRadius: '8px', marginBottom: '20px' }}>
             <p style={{ margin: 0 }}>
-              <strong>Blocks Activated Successfully!</strong> The blocks are now available in your theme. Go to <strong>Online Store → Themes → Customize → Add Block → Apps</strong> to preview and place them on your storefront.
+              <strong>Blocks Activated Successfully!</strong> The highlighted blocks are now available in your theme. Go to <strong>Online Store → Themes → Customize → Add Block → Apps</strong> to preview and place them on your storefront.
             </p>
           </div>
         ) : (
           <div style={{ padding: '15px', backgroundColor: '#e4f0fa', color: '#084e8a', borderRadius: '8px', marginBottom: '20px' }}>
             <p style={{ margin: 0 }}>
-              Click "Activate All Blocks" to instantly enable premium sections for your storefront.
+              Click "Activate" on any block to instantly enable premium sections for your storefront.
             </p>
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Available Blocks</h2>
-          <s-button onClick={() => setActivated(true)}>
-            Activate All Blocks
-          </s-button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
@@ -65,6 +90,14 @@ export default function Index() {
               />
               <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{block.title}</h3>
               <p style={{ margin: 0, color: '#666', lineHeight: '1.4' }}>{block.description}</p>
+              <div style={{ marginTop: '15px' }}>
+                <s-button
+                  onClick={() => handleActivate(block.id)}
+                  disabled={activatedBlocks[block.id]}
+                >
+                  {activatedBlocks[block.id] ? "Activated" : "Activate"}
+                </s-button>
+              </div>
             </s-box>
           ))}
         </div>
