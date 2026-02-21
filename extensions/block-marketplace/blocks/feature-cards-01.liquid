@@ -1,0 +1,536 @@
+<style>
+  .hfc-container-{{ block.id }} {
+    display: flex;
+    width: 100%;
+    height: 720px;
+    margin: 0 auto;
+    overflow: hidden;
+    background-color: #000;
+  }
+
+  .hfc-card {
+    flex: 1;
+    position: relative;
+    transition: flex 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.6s ease;
+    overflow: hidden;
+    background-color: var(--idle-bg, #000);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  .hfc-card--left {
+    border-right: none;
+  }
+
+  .hfc-container-{{ block.id }}:hover .hfc-card {
+    flex: 0.8;
+  }
+
+  .hfc-container-{{ block.id }} .hfc-card:hover {
+    flex: 2;
+  }
+
+  .hfc-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    z-index: 1;
+  }
+
+  .hfc-card:hover .hfc-bg {
+    opacity: 1;
+  }
+
+  .hfc-content-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .hfc-image-wrap {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 350px;
+    height: 575px;
+    transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hfc-image-wrap img, .hfc-image-wrap svg {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  /* On left card hover, move image to right and scale down */
+  .hfc-card--left:hover .hfc-image-wrap {
+    left: auto;
+    right: 15%;
+    transform: translateY(-50%) translateX(20%);
+  }
+
+  .hfc-card--left:hover .hfc-image-wrap img {
+      transform: scale(0.65);
+  }
+
+  /* On right card hover, move image to left and scale down */
+  .hfc-card--right:hover .hfc-image-wrap {
+    left: 15%;
+    right: auto;
+    transform: translateY(-50%) translateX(-20%);
+  }
+
+  .hfc-card--right:hover .hfc-image-wrap img {
+      transform: scale(0.65);
+  }
+
+  /* Text Content */
+  .hfc-text-content {
+    position: absolute;
+    width: 60%;
+    max-width: 600px;
+    padding: 0 40px;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.1s, transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    color: #fff;
+    pointer-events: none;
+  }
+
+  .hfc-card--left .hfc-text-content {
+    left: 8%;
+    transform: translateX(-30px);
+  }
+
+  .hfc-card--left:hover .hfc-text-content {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  .hfc-card--right .hfc-text-content {
+    right: 8%;
+    transform: translateX(30px);
+  }
+
+  .hfc-card--right:hover .hfc-text-content {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* Typography elements */
+  .hfc-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 64px;
+    font-weight: 400;
+    line-height: 1.1;
+    text-align: center;
+    margin-bottom: 60px;
+    color: #ffffff;
+    margin-top: 0;
+  }
+
+  /* Stats list */
+  .hfc-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .hfc-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .hfc-stat-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .hfc-stat-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .hfc-stat-value {
+    font-family: 'DM Sans', sans-serif;
+    text-align: right;
+  }
+
+  .hfc-stat-value-num {
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .hfc-stat-value-unit {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 1024px) {
+    .hfc-container-{{ block.id }} {
+      height: 600px;
+    }
+    .hfc-title {
+      font-size: 48px;
+      margin-bottom: 40px;
+    }
+    .hfc-image-wrap {
+      width: 250px;
+      height: 400px;
+    }
+    .hfc-text-content {
+      width: 70%;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hfc-container-{{ block.id }} {
+      flex-direction: column;
+      height: 1000px;
+      border-top: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .hfc-card--left {
+      border-right: 1px solid rgba(255, 255, 255, 0.5);
+      border-bottom: none;
+    }
+    .hfc-card {
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-top: none;
+    }
+
+    .hfc-image-wrap {
+      width: 200px;
+      height: 350px;
+    }
+
+    .hfc-card--left:hover .hfc-image-wrap,
+    .hfc-card--right:hover .hfc-image-wrap {
+      left: 50%;
+      right: auto;
+      top: auto;
+      bottom: 20px;
+      transform: translateX(-50%);
+    }
+
+    .hfc-card--left .hfc-text-content,
+    .hfc-card--right .hfc-text-content {
+      left: 50%;
+      right: auto;
+      top: 40px;
+      width: 90%;
+      transform: translateX(-50%) translateY(-20px);
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .hfc-card--left:hover .hfc-text-content,
+    .hfc-card--right:hover .hfc-text-content {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hfc-title {
+      font-size: 36px;
+      margin-bottom: 30px;
+    }
+  }
+</style>
+
+<div
+  class="hfc-container-{{ block.id }}"
+  style="--text-color: {{ block.settings.text_color }}; --idle-bg: {{ block.settings.idle_bg_color }};"
+>
+  <!-- LEFT CARD -->
+  <div class="hfc-card hfc-card--left">
+    <div
+      class="hfc-bg"
+      style="background: linear-gradient(to left, {{ block.settings.left_bg_start }}, {{ block.settings.left_bg_end }});"
+    ></div>
+    <div class="hfc-content-wrapper">
+      <div class="hfc-text-content" style="color: var(--text-color);">
+        <h2 class="hfc-title" style="color: var(--text-color);">{{ block.settings.left_title | newline_to_br }}</h2>
+        <div class="hfc-stats-list">
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.left_stat_1_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.left_stat_1_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.left_stat_1_unit }}</span></span
+            >
+          </div>
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.left_stat_2_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.left_stat_2_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.left_stat_2_unit }}</span></span
+            >
+          </div>
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.left_stat_3_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.left_stat_3_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.left_stat_3_unit }}</span></span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="hfc-image-wrap">
+        {% if block.settings.left_image != blank %}
+          {{ block.settings.left_image | image_url: width: 800 | image_tag: alt: block.settings.left_title }}
+        {% else %}
+          {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT CARD -->
+  <div class="hfc-card hfc-card--right">
+    <div
+      class="hfc-bg"
+      style="background: linear-gradient(to right, {{ block.settings.right_bg_start }}, {{ block.settings.right_bg_end }});"
+    ></div>
+    <div class="hfc-content-wrapper">
+      <div class="hfc-image-wrap">
+        {% if block.settings.right_image != blank %}
+          {{ block.settings.right_image | image_url: width: 800 | image_tag: alt: block.settings.right_title }}
+        {% else %}
+          {{ 'product-2' | placeholder_svg_tag: 'placeholder-svg' }}
+        {% endif %}
+      </div>
+      <div class="hfc-text-content" style="color: var(--text-color);">
+        <h2 class="hfc-title" style="color: var(--text-color);">{{ block.settings.right_title | newline_to_br }}</h2>
+        <div class="hfc-stats-list">
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.right_stat_1_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.right_stat_1_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.right_stat_1_unit }}</span></span
+            >
+          </div>
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.right_stat_2_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.right_stat_2_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.right_stat_2_unit }}</span></span
+            >
+          </div>
+          <div class="hfc-stat-item" style="border-bottom-color: rgba(255,255,255,0.3);">
+            <span class="hfc-stat-label">{{ block.settings.right_stat_3_label }}</span>
+            <span class="hfc-stat-value"
+              ><span class="hfc-stat-value-num">{{ block.settings.right_stat_3_num }}</span
+              ><span class="hfc-stat-value-unit">{{ block.settings.right_stat_3_unit }}</span></span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Hover Feature Cards",
+  "target": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Global Colors"
+    },
+    {
+      "type": "color",
+      "id": "idle_bg_color",
+      "label": "Idle Background Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Left Card Settings"
+    },
+    {
+      "type": "image_picker",
+      "id": "left_image",
+      "label": "Left Product Image"
+    },
+    {
+      "type": "textarea",
+      "id": "left_title",
+      "label": "Left Title",
+      "default": "Designed for\ndisciplined results"
+    },
+    {
+      "type": "color",
+      "id": "left_bg_start",
+      "label": "Left Gradient Start",
+      "default": "#817135"
+    },
+    {
+      "type": "color",
+      "id": "left_bg_end",
+      "label": "Left Gradient End",
+      "default": "#534719"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_1_label",
+      "label": "Left Stat 1 Label",
+      "default": "Protein"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_1_num",
+      "label": "Left Stat 1 Number",
+      "default": "28"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_1_unit",
+      "label": "Left Stat 1 Unit",
+      "default": "g"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_2_label",
+      "label": "Left Stat 2 Label",
+      "default": "Calories"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_2_num",
+      "label": "Left Stat 2 Number",
+      "default": "150"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_2_unit",
+      "label": "Left Stat 2 Unit",
+      "default": "Cal"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_3_label",
+      "label": "Left Stat 3 Label",
+      "default": "Sugar"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_3_num",
+      "label": "Left Stat 3 Number",
+      "default": "0"
+    },
+    {
+      "type": "text",
+      "id": "left_stat_3_unit",
+      "label": "Left Stat 3 Unit",
+      "default": "g"
+    },
+    {
+      "type": "header",
+      "content": "Right Card Settings"
+    },
+    {
+      "type": "image_picker",
+      "id": "right_image",
+      "label": "Right Product Image"
+    },
+    {
+      "type": "textarea",
+      "id": "right_title",
+      "label": "Right Title",
+      "default": "Designed for\ndisciplined decadence"
+    },
+    {
+      "type": "color",
+      "id": "right_bg_start",
+      "label": "Right Gradient Start",
+      "default": "#754a24"
+    },
+    {
+      "type": "color",
+      "id": "right_bg_end",
+      "label": "Right Gradient End",
+      "default": "#533010"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_1_label",
+      "label": "Right Stat 1 Label",
+      "default": "Protein"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_1_num",
+      "label": "Right Stat 1 Number",
+      "default": "28"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_1_unit",
+      "label": "Right Stat 1 Unit",
+      "default": "g"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_2_label",
+      "label": "Right Stat 2 Label",
+      "default": "Calories"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_2_num",
+      "label": "Right Stat 2 Number",
+      "default": "150"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_2_unit",
+      "label": "Right Stat 2 Unit",
+      "default": "Cal"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_3_label",
+      "label": "Right Stat 3 Label",
+      "default": "Sugar"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_3_num",
+      "label": "Right Stat 3 Number",
+      "default": "0"
+    },
+    {
+      "type": "text",
+      "id": "right_stat_3_unit",
+      "label": "Right Stat 3 Unit",
+      "default": "g"
+    }
+  ]
+}
+{% endschema %}

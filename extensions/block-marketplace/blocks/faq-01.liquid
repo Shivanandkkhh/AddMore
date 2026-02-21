@@ -1,0 +1,161 @@
+<style>
+  .faq-wrapper-{{ block.id }} {
+    max-width: {{ block.settings.max_width }}px;
+    margin: {{ block.settings.margin_top }}px auto {{ block.settings.margin_bottom }}px;
+    padding: 0 20px;
+    font-family: inherit;
+  }
+  .faq-wrapper-{{ block.id }} h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: {{ block.settings.text_color }};
+  }
+  .faq-wrapper-{{ block.id }} .faq-item {
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 10px;
+  }
+  .faq-wrapper-{{ block.id }} .faq-question {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: {{ block.settings.text_color }};
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .faq-wrapper-{{ block.id }} .faq-question::after {
+    content: '+';
+    font-size: 20px;
+    font-weight: normal;
+    transition: transform 0.3s;
+  }
+  .faq-wrapper-{{ block.id }} .faq-question[aria-expanded="true"]::after {
+    transform: rotate(45deg);
+  }
+  .faq-wrapper-{{ block.id }} .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: #4a5568;
+  }
+  .faq-wrapper-{{ block.id }} .faq-answer.open {
+    max-height: 500px;
+  }
+  .faq-wrapper-{{ block.id }} .faq-answer-inner {
+    padding-bottom: 15px;
+    line-height: 1.6;
+  }
+</style>
+
+<div class="faq-wrapper-{{ block.id }}">
+  {% if block.settings.title != blank %}
+    <h2>{{ block.settings.title }}</h2>
+  {% endif %}
+
+  <div class="faq-list">
+    {% for i in (1..4) %}
+      {% assign question_key = 'question_' | append: i %}
+      {% assign answer_key = 'answer_' | append: i %}
+
+      {% assign question = block.settings[question_key] %}
+      {% assign answer = block.settings[answer_key] %}
+
+      {% if question != blank %}
+        <div class="faq-item">
+          <button
+            class="faq-question"
+            aria-expanded="false"
+            onclick="
+              let expanded = this.getAttribute('aria-expanded') === 'true' || false;
+              this.setAttribute('aria-expanded', !expanded);
+              let answer = this.nextElementSibling;
+              if(!expanded) {
+                answer.classList.add('open');
+              } else {
+                answer.classList.remove('open');
+              }
+            "
+          >
+            {{ question }}
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">{{ answer }}</div>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "FAQ Accordion",
+  "target": "section",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Heading", "default": "Frequently Asked Questions" },
+    { "type": "color", "id": "text_color", "label": "Text Color", "default": "#1a202c" },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 600,
+      "max": 1200,
+      "step": 50,
+      "default": 800,
+      "label": "Max Width",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 40,
+      "label": "Margin Top",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 40,
+      "label": "Margin Bottom",
+      "unit": "px"
+    },
+    { "type": "header", "content": "Question 1" },
+    { "type": "text", "id": "question_1", "label": "Question", "default": "How does shipping work?" },
+    {
+      "type": "richtext",
+      "id": "answer_1",
+      "label": "Answer",
+      "default": "<p>We offer fast and reliable shipping to various locations.</p>"
+    },
+    { "type": "header", "content": "Question 2" },
+    { "type": "text", "id": "question_2", "label": "Question", "default": "What is the return policy?" },
+    {
+      "type": "richtext",
+      "id": "answer_2",
+      "label": "Answer",
+      "default": "<p>You can return items within 30 days of purchase.</p>"
+    },
+    { "type": "header", "content": "Question 3" },
+    { "type": "text", "id": "question_3", "label": "Question", "default": "Do you offer customer support?" },
+    {
+      "type": "richtext",
+      "id": "answer_3",
+      "label": "Answer",
+      "default": "<p>Yes, our team is available 24/7 to help you.</p>"
+    },
+    { "type": "header", "content": "Question 4" },
+    { "type": "text", "id": "question_4", "label": "Question" },
+    { "type": "richtext", "id": "answer_4", "label": "Answer" }
+  ]
+}
+{% endschema %}

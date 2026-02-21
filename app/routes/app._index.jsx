@@ -58,9 +58,9 @@ export default function Index() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {blocks.map((block) => (
             <s-box key={block.id} padding="base" borderWidth="base" borderRadius="base" background="subdued">
-              <img 
-                src={block.image} 
-                alt={block.title} 
+              <img
+                src={block.image}
+                alt={block.title}
                 style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
               />
               <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{block.title}</h3>

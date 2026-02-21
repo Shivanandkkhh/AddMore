@@ -1,0 +1,188 @@
+<style>
+  .lookbook-wrapper-{{ block.id }} {
+    position: relative;
+    max-width: {{ block.settings.max_width }}px;
+    margin: {{ block.settings.margin_top }}px auto {{ block.settings.margin_bottom }}px;
+  }
+  .lookbook-wrapper-{{ block.id }} img.lookbook-main-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: {{ block.settings.border_radius }}px;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: #ffffff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.4);
+    z-index: 2;
+    transition: transform 0.2s ease;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #000000;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot-popup {
+    position: absolute;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, bottom 0.3s ease;
+    z-index: 3;
+    text-align: center;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot:hover .hotspot-popup {
+    opacity: 1;
+    visibility: visible;
+    bottom: 180%;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot-popup img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot-popup h4 {
+    margin: 0 0 5px;
+    font-size: 14px;
+    color: #333333;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot-popup p {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #000000;
+    font-weight: bold;
+  }
+  .lookbook-wrapper-{{ block.id }} .hotspot-popup a {
+    display: inline-block;
+    background: #000000;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+</style>
+
+<div class="lookbook-wrapper-{{ block.id }}">
+  {% if block.settings.image %}
+    {{
+      block.settings.image
+      | image_url: width: 1200
+      | image_tag: class: 'lookbook-main-img', alt: 'Lookbook', loading: 'lazy'
+    }}
+  {% else %}
+    {{ 'collection-1' | placeholder_svg_tag: 'placeholder-svg lookbook-main-img' }}
+  {% endif %}
+
+  {% for i in (1..3) %}
+    {% assign product_key = 'product_' | append: i %}
+    {% assign top_key = 'top_' | append: i %}
+    {% assign left_key = 'left_' | append: i %}
+
+    {% assign product = block.settings[product_key] %}
+    {% assign top = block.settings[top_key] %}
+    {% assign left = block.settings[left_key] %}
+
+    {% if product != blank or forloop.first %}
+      <div class="hotspot" style="top: {{ top }}%; left: {{ left }}%;">
+        <div class="hotspot-popup">
+          {% if product != blank %}
+            {{ product.featured_image | image_url: width: 200 | image_tag: alt: product.title }}
+            <h4>{{ product.title }}</h4>
+            <p>{{ product.price | money }}</p>
+            <a href="{{ product.url }}">View Product</a>
+          {% else %}
+            {{ 'product-1' | placeholder_svg_tag: 'placeholder-svg' }}
+            <h4>Example Product</h4>
+            <p>$49.99</p>
+            <a href="#">View Product</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% schema %}
+{
+  "name": "Lookbook Hotspots",
+  "target": "section",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Lookbook Image" },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 600,
+      "max": 1600,
+      "step": 100,
+      "default": 1000,
+      "label": "Max Width",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 40,
+      "label": "Margin Top",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 40,
+      "label": "Margin Bottom",
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "min": 0,
+      "max": 24,
+      "step": 2,
+      "default": 0,
+      "label": "Image Border Radius",
+      "unit": "px"
+    },
+    { "type": "header", "content": "Hotspot 1" },
+    { "type": "url", "id": "product_url_1", "label": "Product 1 Link (Alternative)" },
+    { "type": "range", "id": "top_1", "min": 0, "max": 100, "step": 1, "default": 30, "label": "Position Top (%)" },
+    { "type": "range", "id": "left_1", "min": 0, "max": 100, "step": 1, "default": 30, "label": "Position Left (%)" },
+    { "type": "header", "content": "Hotspot 2" },
+    { "type": "url", "id": "product_url_2", "label": "Product 2 Link (Alternative)" },
+    { "type": "range", "id": "top_2", "min": 0, "max": 100, "step": 1, "default": 60, "label": "Position Top (%)" },
+    { "type": "range", "id": "left_2", "min": 0, "max": 100, "step": 1, "default": 70, "label": "Position Left (%)" },
+    { "type": "header", "content": "Hotspot 3" },
+    { "type": "url", "id": "product_url_3", "label": "Product 3 Link (Alternative)" },
+    { "type": "range", "id": "top_3", "min": 0, "max": 100, "step": 1, "default": 50, "label": "Position Top (%)" },
+    { "type": "range", "id": "left_3", "min": 0, "max": 100, "step": 1, "default": 50, "label": "Position Left (%)" }
+  ]
+}
+{% endschema %}
