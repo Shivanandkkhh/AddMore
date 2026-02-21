@@ -1,0 +1,24 @@
+<div class="market-hero" style="background-color: {{ block.settings.bg_color }}; padding: 60px 20px; text-align: center; color: {{ block.settings.text_color }}; border-radius: 8px; margin: 20px 0;">
+  <h1 style="font-size: 2.5rem; margin-bottom: 10px;">{{ block.settings.heading }}</h1>
+  <p style="font-size: 1.2rem; margin-bottom: 20px;">{{ block.settings.subheading }}</p>
+  {% if block.settings.button_text != blank %}
+    <a href="{{ block.settings.button_link }}" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+      {{ block.settings.button_text }}
+    </a>
+  {% endif %}
+</div>
+
+{% schema %}
+{
+  "name": "Marketplace Hero",
+  "target": "section",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Welcome to our Store" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "default": "Discover our amazing products today." },
+    { "type": "text", "id": "button_text", "label": "Button Text", "default": "Shop Now" },
+    { "type": "url", "id": "button_link", "label": "Button Link" },
+    { "type": "color", "id": "bg_color", "label": "Background Color", "default": "#f4f4f4" },
+    { "type": "color", "id": "text_color", "label": "Text Color", "default": "#333333" }
+  ]
+}
+{% endschema %}

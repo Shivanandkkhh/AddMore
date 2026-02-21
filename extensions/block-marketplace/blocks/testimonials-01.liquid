@@ -1,0 +1,45 @@
+<div class="market-testimonials" style="padding: 40px 20px; text-align: center;">
+  <h2 style="margin-bottom: 30px; font-size: 2rem;">Customer Reviews</h2>
+  <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+    {% for i in (1..3) %}
+      {% capture name_id %}name_{{ i }}{% endcapture %}
+      {% capture text_id %}text_{{ i }}{% endcapture %}
+
+      <div style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; min-width: 250px; max-width: 30%;">
+        <div style="color: #FFD700; font-size: 1.5rem; margin-bottom: 10px;">★★★★★</div>
+        <p style="font-style: italic; margin-bottom: 15px;">"{{ block.settings[text_id] }}"</p>
+        <p style="font-weight: bold;">- {{ block.settings[name_id] }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Marketplace Testimonials",
+  "target": "section",
+  "settings": [
+    { "type": "text", "id": "name_1", "label": "Reviewer 1 Name", "default": "Sarah J." },
+    {
+      "type": "textarea",
+      "id": "text_1",
+      "label": "Reviewer 1 Text",
+      "default": "Absolutely loved my purchase! Fast shipping."
+    },
+    { "type": "text", "id": "name_2", "label": "Reviewer 2 Name", "default": "Michael T." },
+    {
+      "type": "textarea",
+      "id": "text_2",
+      "label": "Reviewer 2 Text",
+      "default": "Great quality and exactly as described."
+    },
+    { "type": "text", "id": "name_3", "label": "Reviewer 3 Name", "default": "Emma W." },
+    {
+      "type": "textarea",
+      "id": "text_3",
+      "label": "Reviewer 3 Text",
+      "default": "Customer service was fantastic. Highly recommend!"
+    }
+  ]
+}
+{% endschema %}

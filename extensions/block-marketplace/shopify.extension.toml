@@ -1,0 +1,7 @@
+api_version = "2024-01"
+
+[[extensions]]
+name = "Theme Block Marketplace"
+handle = "block-marketplace"
+uid = "57f85040-fb08-1b27-2e8d-4d52536dae227b9ece8b"
+type = "theme"
