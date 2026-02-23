@@ -12,5 +12,14 @@ export const action = async ({ request }) => {
     await db.session.deleteMany({ where: { shop } });
   }
 
+  // Update SaaS Shop model to mark as uninstalled
+  await db.shop.update({
+    where: { shopDomain: shop },
+    data: { uninstalledAt: new Date() }
+  }).catch(() => {
+    // Catch if shop doesn't exist yet
+    console.log(`Could not update uninstall timestamp for ${shop}, record not found.`);
+  });
+
   return new Response();
 };

@@ -1,108 +1,204 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
+import { useFetcher, useLoaderData } from "react-router";
+import { Page, Layout, Card, Text, Button, BlockStack, InlineStack, Badge, Modal, TextField, Banner } from "@shopify/polaris";
+import prisma from "../db.server";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+
+  // Quick Seeder for Sandbox Prototype
+  const blockCount = await prisma.block.count().catch(() => 0);
+  if (blockCount === 0) {
+    try {
+      const b1 = await prisma.block.create({ data: { handle: "hero-01", name: "Hero Section", isFree: true, basePrice: 0 } });
+      const b2 = await prisma.block.create({ data: { handle: "testimonials-01", name: "Testimonials Section", isFree: true, basePrice: 0 } });
+      const b3 = await prisma.block.create({ data: { handle: "reels-01", name: "UGC Reels", isFree: false, basePrice: 9.0 } });
+      const b4 = await prisma.block.create({ data: { handle: "before-after-01", name: "Before & After", isFree: false, basePrice: 7.0 } });
+      const b5 = await prisma.block.create({ data: { handle: "featured-collection", name: "Featured Collection", isFree: false, basePrice: 5.0 } });
+
+      const bun1 = await prisma.bundle.create({ data: { name: "Conversion Pack", price: 19.0, billingInterval: "MONTHLY" } });
+      await prisma.bundleBlock.createMany({
+        data: [
+          { bundleId: bun1.id, blockId: b3.id },
+          { bundleId: bun1.id, blockId: b4.id },
+          { bundleId: bun1.id, blockId: b5.id },
+        ]
+      });
+    } catch (e) { } // Ignore seed failures
+  }
+
+  const shop = await prisma.shop.findUnique({
+    where: { shopDomain: session.shop },
+    include: {
+      activatedBlocks: { include: { block: true } },
+      subscriptions: true
+    }
+  });
+
+  const activeHandles = shop?.activatedBlocks.map(ab => ab.block.handle) || [];
+  const activeSubs = shop?.subscriptions.filter(s => s.status === "ACTIVE").map(s => s.referenceId) || [];
+
+  const blocks = await prisma.block.findMany({ orderBy: { name: 'asc' } });
+  const bundles = await prisma.bundle.findMany({ include: { blocks: { include: { block: true } } } });
+
+  return { activeHandles, activeSubs, blocks, bundles };
 };
 
 export default function Index() {
+  const { activeHandles, activeSubs, blocks, bundles } = useLoaderData();
   const [activatedBlocks, setActivatedBlocks] = useState({});
+  const [checkoutModal, setCheckoutModal] = useState({ open: false, type: "", referenceId: "", price: 0, name: "" });
+  const [discountCode, setDiscountCode] = useState("");
 
-  const handleActivate = (id) => {
-    setActivatedBlocks((prev) => ({ ...prev, [id]: true }));
+  const discountFetcher = useFetcher();
+  const activationFetcher = useFetcher();
+
+  useEffect(() => {
+    const initial = {};
+    activeHandles.forEach(handle => initial[handle] = true);
+    setActivatedBlocks(initial);
+  }, [activeHandles]);
+
+  const handleActivate = (block) => {
+    if (!block.isFree && !activeSubs.includes(block.id)) {
+      // Check if they own a bundle housing this block
+      const ownsBundleForBlock = bundles.some(bun => activeSubs.includes(bun.id) && bun.blocks.some(bb => bb.block.handle === block.handle));
+      if (!ownsBundleForBlock) {
+        setCheckoutModal({ open: true, type: "block", referenceId: block.id, price: block.basePrice, name: block.name });
+        return;
+      }
+    }
+
+    setActivatedBlocks((prev) => ({ ...prev, [block.handle]: true }));
+    activationFetcher.submit(
+      { actionType: "activate", blockHandle: block.handle },
+      { method: "post", action: "/api/blocks" }
+    );
   };
 
-  const blocks = [
-    {
-      id: 1,
-      title: "Hero Section",
-      description: "A high-converting hero banner with a customizable background and call-to-action button.",
-      image: "https://cdn.shopify.com/b/shopify-brochure2-assets/225c04e21a224a1b0235c5c962b8fc5f.png",
-    },
-    {
-      id: 2,
-      title: "Testimonials Section",
-      description: "Build trust with a 3-column customer review block featuring names, text, and 5-star ratings.",
-      image: "https://cdn.shopify.com/b/shopify-brochure2-assets/d89cf21e35dd713c71a3962635ba4da3.png",
-    },
-    {
-      id: 3,
-      title: "UGC Reels Section",
-      description: "A 9:16 mobile-first video player for User Generated Content. Features autoplay and mute toggles.",
-      image: "https://cdn.shopify.com/b/shopify-brochure2-assets/8ebc70bb3f56d953d6abdb1762c4eaeb.png",
-    },
-    {
-      id: 4,
-      title: "Hover Feature Cards",
-      description: "Side-by-side expandable feature cards with customizable gradients and interactive hover animations.",
-      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png",
-    },
-    {
-      id: 5,
-      title: "Lookbook Section",
-      description: "Interactive image lookbook with shoppable hotspots that display product information on hover.",
-      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-collection-1_large.png",
-    },
-    {
-      id: 6,
-      title: "FAQ Section",
-      description: "An accordion-style FAQ section to answer common customer questions and improve conversion.",
-      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-lifestyle-1_large.png",
-    },
-    {
-      id: 7,
-      title: "Before & After Section",
-      description: "An interactive slider to compare two images side-by-side, perfect for showcasing results.",
-      image: "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-6_large.png",
-    },
-  ];
+  const handleDeactivate = (block) => {
+    setActivatedBlocks((prev) => ({ ...prev, [block.handle]: false }));
+    activationFetcher.submit(
+      { actionType: "deactivate", blockHandle: block.handle },
+      { method: "post", action: "/api/blocks" }
+    );
+  };
+
+  const subscribeFetcher = useFetcher();
+  const handleSubscribeForm = () => {
+    subscribeFetcher.submit(
+      { type: checkoutModal.type, referenceId: checkoutModal.referenceId, discountCode },
+      { method: "post", action: "/api/subscribe" }
+    );
+  };
+
+  const applyDiscount = () => {
+    discountFetcher.submit(
+      { code: discountCode, type: checkoutModal.type, referenceId: checkoutModal.referenceId },
+      { method: "post", action: "/api/discount/validate" }
+    );
+  };
 
   return (
-    <s-page heading="Theme Block Marketplace">
-      <div style={{ padding: "0 20px" }}>
-        {Object.keys(activatedBlocks).length > 0 ? (
-          <div style={{ padding: '15px', backgroundColor: '#e3f1df', color: '#1a5525', borderRadius: '8px', marginBottom: '20px' }}>
-            <p style={{ margin: 0 }}>
-              <strong>Blocks Activated Successfully!</strong> The highlighted blocks are now available in your theme. Go to <strong>Online Store → Themes → Customize → Add Block → Apps</strong> to preview and place them on your storefront.
-            </p>
-          </div>
-        ) : (
-          <div style={{ padding: '15px', backgroundColor: '#e4f0fa', color: '#084e8a', borderRadius: '8px', marginBottom: '20px' }}>
-            <p style={{ margin: 0 }}>
-              Click "Activate" on any block to instantly enable premium sections for your storefront.
-            </p>
-          </div>
-        )}
+    <Page title="Advanced Block Marketplace">
+      <Layout>
+        <Layout.Section>
+          {activationFetcher.data?.error && (
+            <Banner status="critical">{activationFetcher.data.error}</Banner>
+          )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Available Blocks</h2>
-        </div>
+          <BlockStack gap="400">
+            <Text variant="headingXl" as="h2">Individual Theme Blocks</Text>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              {blocks.map((block) => (
+                <Card key={block.id}>
+                  <BlockStack gap="300">
+                    <InlineStack align="space-between">
+                      <Text variant="headingMd" as="h3">{block.name}</Text>
+                      {block.isFree ? <Badge tone="success">Free</Badge> : <Badge tone="attention">${block.basePrice}/mo</Badge>}
+                    </InlineStack>
+                    <Text color="subdued">Enhance your Shopify theme instantly.</Text>
+                    <Button
+                      onClick={() => activatedBlocks[block.handle] ? handleDeactivate(block) : handleActivate(block)}
+                      variant={activatedBlocks[block.handle] ? "secondary" : (block.isFree || activeSubs.includes(block.id) ? "primary" : "secondary")}
+                      tone={activatedBlocks[block.handle] ? "critical" : undefined}
+                    >
+                      {activatedBlocks[block.handle] ? "Deactivate" : (block.isFree ? "Activate" : "Buy & Activate")}
+                    </Button>
+                  </BlockStack>
+                </Card>
+              ))}
+            </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-          {blocks.map((block) => (
-            <s-box key={block.id} padding="base" borderWidth="base" borderRadius="base" background="subdued">
-              <img
-                src={block.image}
-                alt={block.title}
-                style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
-              />
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{block.title}</h3>
-              <p style={{ margin: 0, color: '#666', lineHeight: '1.4' }}>{block.description}</p>
-              <div style={{ marginTop: '15px' }}>
-                <s-button
-                  onClick={() => handleActivate(block.id)}
-                  disabled={activatedBlocks[block.id]}
-                >
-                  {activatedBlocks[block.id] ? "Activated" : "Activate"}
-                </s-button>
+            <Text variant="headingXl" as="h2">Value Bundles (Save 20%+)</Text>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+              {bundles.map((bundle) => (
+                <Card key={bundle.id} background="bg-surface-secondary">
+                  <BlockStack gap="300">
+                    <InlineStack align="space-between">
+                      <Text variant="headingLg" as="h3">{bundle.name}</Text>
+                      <Badge tone="info" size="large">${bundle.price}/{bundle.billingInterval.toLowerCase()}</Badge>
+                    </InlineStack>
+                    <div style={{ paddingLeft: '20px' }}>
+                      <ul style={{ margin: 0 }}>
+                        {bundle.blocks.map(bb => <li key={bb.id}><Text>{bb.block.name}</Text></li>)}
+                      </ul>
+                    </div>
+                    <Button
+                      onClick={() => setCheckoutModal({ open: true, type: "bundle", referenceId: bundle.id, price: bundle.price, name: bundle.name })}
+                      disabled={activeSubs.includes(bundle.id)}
+                      variant="primary"
+                    >
+                      {activeSubs.includes(bundle.id) ? "Subscribed to Bundle" : "Subscribe to Pack"}
+                    </Button>
+                  </BlockStack>
+                </Card>
+              ))}
+            </div>
+          </BlockStack>
+        </Layout.Section>
+      </Layout>
+
+      <Modal
+        open={checkoutModal.open}
+        onClose={() => setCheckoutModal({ ...checkoutModal, open: false })}
+        title={`Subscribe: ${checkoutModal.name}`}
+        primaryAction={{ content: 'Confirm Payment', onAction: handleSubscribeForm, loading: subscribeFetcher.state !== "idle" }}
+        secondaryActions={[{ content: 'Cancel', onAction: () => setCheckoutModal({ ...checkoutModal, open: false }) }]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            <Text>You will be redirected to Shopify's secure billing portal to approve this monthly recurring charge.</Text>
+            <Card>
+              <InlineStack align="space-between">
+                <Text variant="headingMd">Base Price:</Text>
+                <Text variant="headingMd">${checkoutModal.price.toFixed(2)}/mo</Text>
+              </InlineStack>
+              {discountFetcher.data?.discount && (
+                <InlineStack align="space-between">
+                  <Text tone="success">Discount ({discountFetcher.data.discount.code}):</Text>
+                  <Text tone="success">
+                    -{discountFetcher.data.discount.type === "PERCENTAGE" ? `${discountFetcher.data.discount.value}%` : `$${discountFetcher.data.discount.value}`}
+                  </Text>
+                </InlineStack>
+              )}
+            </Card>
+
+            <InlineStack gap="300" align="start">
+              <div style={{ flexGrow: 1 }}>
+                <TextField label="Discount Code" value={discountCode} onChange={setDiscountCode} autoComplete="off" />
               </div>
-            </s-box>
-          ))}
-        </div>
-      </div>
-    </s-page>
+              <div style={{ marginTop: '24px' }}>
+                <Button onClick={applyDiscount}>Apply</Button>
+              </div>
+            </InlineStack>
+            {discountFetcher.data?.error && <Text tone="critical">{discountFetcher.data.error}</Text>}
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
+    </Page>
   );
 }
 

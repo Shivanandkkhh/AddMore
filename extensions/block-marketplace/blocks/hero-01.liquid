@@ -1,13 +1,24 @@
-<div class="market-hero" style="background-color: {{ block.settings.bg_color }}; padding: 60px 20px; text-align: center; color: {{ block.settings.text_color }}; border-radius: 8px; margin: 20px 0;">
+{% assign active_blocks = shop.metafields.marketplace.active_blocks.value %}
+{% if active_blocks contains 'hero-01' %}
+<div
+  class="market-hero"
+  style="background-color: {{ block.settings.bg_color }}; padding: 60px 20px; text-align: center; color: {{ block.settings.text_color }}; border-radius: 8px; margin: 20px 0;"
+>
   <h1 style="font-size: 2.5rem; margin-bottom: 10px;">{{ block.settings.heading }}</h1>
   <p style="font-size: 1.2rem; margin-bottom: 20px;">{{ block.settings.subheading }}</p>
   {% if block.settings.button_text != blank %}
-    <a href="{{ block.settings.button_link }}" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+    <a
+      href="{{ block.settings.button_link }}"
+      style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;"
+    >
       {{ block.settings.button_text }}
     </a>
   {% endif %}
 </div>
 
+{% else %}
+{% if request.design_mode %}<div style="padding: 20px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; text-align: center; border-radius: 4px; margin: 10px 0;"><strong>⚠️ AddMore App: Block Not Activated</strong><br>Please activate this block in your AddMore App dashboard to use it.</div>{% else %}<style>div[data-shopify-editor-block] { display: none; margin: 0; padding: 0; }</style>{% endif %}
+{% endif %}
 {% schema %}
 {
   "name": "Marketplace Hero",

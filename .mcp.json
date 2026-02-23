@@ -3,7 +3,21 @@
     "shopify-dev-mcp": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@shopify/dev-mcp@latest"]
+      "args": [
+        "-y",
+        "@shopify/dev-mcp@latest"
+      ]
+    },
+    "railway": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@railway/mcp-server@latest"
+      ],
+      "env": {
+        "RAILWAY_API_TOKEN": "c79e00b4-b455-4402-8fb5-d8be4d6a006b"
+      }
     }
   }
 }

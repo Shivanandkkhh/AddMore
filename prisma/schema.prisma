@@ -9,8 +9,8 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -31,4 +31,86 @@ model Session {
   emailVerified Boolean?  @default(false)
   refreshToken        String?
   refreshTokenExpires DateTime?
+}
+
+model Shop {
+  id             String    @id @default(uuid())
+  shopDomain     String    @unique
+  plan           String    @default("FREE")
+  installedAt    DateTime  @default(now())
+  uninstalledAt  DateTime?
+  
+  activatedBlocks ShopActivatedBlock[]
+  subscriptions   ShopSubscription[]
+}
+
+model Block {
+  id          String   @id @default(uuid())
+  handle      String   @unique
+  name        String
+  category    String?
+  basePrice   Float    @default(0.0)
+  isFree      Boolean  @default(true) // Free vs Premium
+  isPremium   Boolean  @default(false)
+  version     String   @default("1.0.0")
+  
+  activations ShopActivatedBlock[]
+  bundles     BundleBlock[]
+}
+
+model ShopActivatedBlock {
+  id          String   @id @default(uuid())
+  shopId      String
+  blockId     String
+  activatedAt DateTime @default(now())
+  
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  block       Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, blockId])
+}
+
+model Bundle {
+  id              String   @id @default(uuid())
+  name            String
+  price           Float
+  billingInterval String   @default("MONTHLY") // MONTHLY, YEARLY
+  
+  blocks          BundleBlock[]
+}
+
+model BundleBlock {
+  id        String @id @default(uuid())
+  bundleId  String
+  blockId   String
+
+  bundle    Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  block     Block  @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, blockId])
+}
+
+model ShopSubscription {
+  id               String    @id @default(uuid())
+  shopId           String
+  subscriptionType String    // "BLOCK" or "BUNDLE"
+  referenceId      String    // Ext id for Block or Bundle
+  status           String    // "ACTIVE", "CANCELLED", "PENDING"
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  chargeId         String?   // Shopify Charge ID
+  
+  shop             Shop      @relation(fields: [shopId], references: [id])
+}
+
+model DiscountCode {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  type          String   // "PERCENTAGE" or "FIXED"
+  value         Float
+  applicableTo  String   // "BLOCK", "BUNDLE", "ALL"
+  referenceId   String?  // Nullable, if restricted to specific block/bundle ID
+  expiryDate    DateTime?
+  usageLimit    Int?
+  timesUsed     Int      @default(0)
 }

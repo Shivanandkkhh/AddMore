@@ -2,7 +2,7 @@
 
 client_id = "329d460e9c067514046973f08ac21d93"
 name = "addMore"
-application_url = "https://example.com"
+application_url = "https://addmore-app-production.up.railway.app"
 embedded = true
 
 [webhooks]

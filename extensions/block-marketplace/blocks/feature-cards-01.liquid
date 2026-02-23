@@ -1,3 +1,5 @@
+{% assign active_blocks = shop.metafields.marketplace.active_blocks.value %}
+{% if active_blocks contains 'feature-cards-01' %}
 <style>
   .hfc-container-{{ block.id }} {
     display: flex;
@@ -359,6 +361,9 @@
   </div>
 </div>
 
+{% else %}
+{% if request.design_mode %}<div style="padding: 20px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; text-align: center; border-radius: 4px; margin: 10px 0;"><strong>⚠️ AddMore App: Block Not Activated</strong><br>Please activate this block in your AddMore App dashboard to use it.</div>{% else %}<style>div[data-shopify-editor-block] { display: none; margin: 0; padding: 0; }</style>{% endif %}
+{% endif %}
 {% schema %}
 {
   "name": "Hover Feature Cards",

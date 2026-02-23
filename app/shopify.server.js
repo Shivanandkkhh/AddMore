@@ -7,6 +7,8 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
+export const MONTHLY_PLAN = 'Pro Plan - Unlimited';
+
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
@@ -22,6 +24,14 @@ const shopify = shopifyApp({
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
+  billing: {
+    [MONTHLY_PLAN]: {
+      amount: 14.99,
+      currencyCode: 'USD',
+      interval: shopifyApp.BillingInterval?.Every30Days || "EVERY_30_DAYS",
+      replacementBehavior: shopifyApp.BillingReplacementBehavior?.ApplyImmediately || "APPLY_IMMEDIATELY",
+    },
+  },
 });
 
 export default shopify;
@@ -32,3 +42,4 @@ export const unauthenticated = shopify.unauthenticated;
 export const login = shopify.login;
 export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;
+export const billing = shopify.billing;
