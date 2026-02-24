@@ -137,16 +137,21 @@ export const action = async ({ request }) => {
             }
             const liquidContent = fs.readFileSync(filePath, "utf8");
 
-            // Inject into theme using REST Asset API
+            // Inject into theme using pure REST fetch
             try {
-                const response = await admin.rest.put({
-                    path: `themes/${themeId}/assets.json`,
-                    data: {
+                const url = `https://${session.shop}/admin/api/2024-01/themes/${themeId}/assets.json`;
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Shopify-Access-Token': session.accessToken
+                    },
+                    body: JSON.stringify({
                         asset: {
                             key: assetKey,
                             value: liquidContent
                         }
-                    }
+                    })
                 });
                 if (!response.ok) {
                     const errBody = await response.json();
@@ -158,11 +163,14 @@ export const action = async ({ request }) => {
                 throw new Error("Failed to upload asset via REST API: " + (err.message || String(err)));
             }
         } else if (actionType === "deactivate") {
-            // Delete from theme using REST API
+            // Delete from theme using pure REST fetch
             try {
-                await admin.rest.delete({
-                    path: `themes/${themeId}/assets.json`,
-                    query: { "asset[key]": assetKey }
+                const url = `https://${session.shop}/admin/api/2024-01/themes/${themeId}/assets.json?asset[key]=${assetKey}`;
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Shopify-Access-Token': session.accessToken
+                    }
                 });
                 console.log(`Deleted ${assetKey} from theme ${themeId}`);
             } catch (err) {
