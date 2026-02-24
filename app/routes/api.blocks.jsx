@@ -138,31 +138,35 @@ export const action = async ({ request }) => {
             const liquidContent = fs.readFileSync(filePath, "utf8");
 
             // Inject into theme using REST Asset API
-            const asset = new admin.rest.resources.Asset({ session: session });
-            asset.theme_id = themeId;
-            asset.key = assetKey;
-            asset.value = liquidContent;
-
             try {
-                await asset.save({
-                    update: true,
+                const response = await admin.rest.put({
+                    path: `themes/${themeId}/assets.json`,
+                    data: {
+                        asset: {
+                            key: assetKey,
+                            value: liquidContent
+                        }
+                    }
                 });
+                if (!response.ok) {
+                    const errBody = await response.json();
+                    throw new Error(JSON.stringify(errBody));
+                }
                 console.log(`Injected ${assetKey} into theme ${themeId}`);
             } catch (err) {
-                console.error("Asset upload error details:", err.response?.body || err);
-                throw new Error("Failed to upload asset via REST API: " + (err.response?.body?.errors?.asset?.[0] || err.message));
+                console.error("Asset upload error details:", err.message || err);
+                throw new Error("Failed to upload asset via REST API: " + (err.message || String(err)));
             }
         } else if (actionType === "deactivate") {
             // Delete from theme using REST API
             try {
-                await admin.rest.resources.Asset.delete({
-                    session: session,
-                    theme_id: themeId,
-                    asset: { "key": assetKey },
+                await admin.rest.delete({
+                    path: `themes/${themeId}/assets.json`,
+                    query: { "asset[key]": assetKey }
                 });
                 console.log(`Deleted ${assetKey} from theme ${themeId}`);
             } catch (err) {
-                console.error("Asset delete error:", err.response?.body || err);
+                console.error("Asset delete error:", err.message || err);
                 // Ignore 404s if it's already deleted
             }
         }

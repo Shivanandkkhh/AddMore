@@ -2,20 +2,22 @@
 
 client_id = "329d460e9c067514046973f08ac21d93"
 name = "addMore"
-application_url = "https://addmore-app-production.up.railway.app"
+application_url = "https://addmore-app.onrender.com"
 embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "write_metaobject_definitions,write_metaobjects,write_products,write_themes,read_themes"
 optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ ]
-
-[build]
-automatically_update_urls_on_dev = true
+redirect_urls = [
+  "https://addmore-app.onrender.com/api/auth"
+]
