@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 export const action = async ({ request }) => {
-    const { session } = await authenticate.admin(request);
+    const { admin, session } = await authenticate.admin(request);
     const formData = await request.formData();
 
     const actionType = formData.get("actionType");
@@ -105,78 +105,71 @@ export const action = async ({ request }) => {
             }).catch(() => { /* Ignore if it doesn't exist */ });
         }
 
-        // 4. Fetch the main theme ID using REST API directly (avoids GraphQL GID bridging issues)
-        const themesListUrl = `https://${session.shop}/admin/api/2025-10/themes.json?role=main`;
-        const themesListResponse = await fetch(themesListUrl, {
-            headers: {
-                'X-Shopify-Access-Token': session.accessToken,
-                'Content-Type': 'application/json'
+        // 4. Fetch the main theme ID via GraphQL (uses the authenticated admin client — no raw token needed)
+        const themesResponse = await admin.graphql(`#graphql
+          query {
+            themes(first: 1, roles: [MAIN]) {
+              edges {
+                node { id }
+              }
             }
-        });
+          }
+        `);
+        const themesData = await themesResponse.json();
+        const themeGid = themesData.data?.themes?.edges?.[0]?.node?.id;
 
-        if (!themesListResponse.ok) {
-            const themesErr = await themesListResponse.json().catch(() => ({}));
-            throw new Error(`Could not fetch themes: ${JSON.stringify(themesErr)}`);
-        }
-
-        const themesListData = await themesListResponse.json();
-        const mainTheme = themesListData.themes?.[0];
-
-        if (!mainTheme) {
+        if (!themeGid) {
             throw new Error("Could not find the main theme to inject assets into.");
         }
 
-        const themeId = mainTheme.id;
         const assetKey = `sections/addmore-${blockHandle}.liquid`;
 
         if (actionType === "activate") {
-            // Read the template from local backend storage
+            // Read the Liquid template from the server filesystem
             const filePath = path.join(process.cwd(), "app", "theme-assets", "blocks", `${blockHandle}.liquid`);
             if (!fs.existsSync(filePath)) {
                 throw new Error(`Template for ${blockHandle} not found on server.`);
             }
             const liquidContent = fs.readFileSync(filePath, "utf8");
 
-            // Inject into theme using pure REST fetch
-            try {
-                const url = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json`;
-                const response = await fetch(url, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Shopify-Access-Token': session.accessToken
-                    },
-                    body: JSON.stringify({
-                        asset: {
-                            key: assetKey,
-                            value: liquidContent
-                        }
-                    })
-                });
-                if (!response.ok) {
-                    const errBody = await response.json();
-                    throw new Error(JSON.stringify(errBody));
+            // Upload to theme via GraphQL mutation (admin client handles auth internally)
+            const uploadResponse = await admin.graphql(`#graphql
+              mutation themeFilesUpsert($themeId: ID!, $files: [OnlineStoreThemeFilesUpsertFileInput!]!) {
+                themeFilesUpsert(themeId: $themeId, files: $files) {
+                  upsertedThemeFiles { filename }
+                  userErrors { code filename message }
                 }
-                console.log(`Injected ${assetKey} into theme ${themeId}`);
-            } catch (err) {
-                console.error("Asset upload error details:", err.message || err);
-                throw new Error("Failed to upload asset via REST API: " + (err.message || String(err)));
+              }
+            `, {
+                variables: {
+                    themeId: themeGid,
+                    files: [{ filename: assetKey, body: { type: "TEXT", value: liquidContent } }]
+                }
+            });
+            const uploadData = await uploadResponse.json();
+            const uploadErrors = uploadData.data?.themeFilesUpsert?.userErrors;
+            if (uploadErrors?.length > 0) {
+                throw new Error(`Failed to upload theme file: ${JSON.stringify(uploadErrors)}`);
             }
+            console.log(`Injected ${assetKey} into theme ${themeGid}`);
+
         } else if (actionType === "deactivate") {
-            // Delete from theme using pure REST fetch
-            try {
-                const url = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json?asset[key]=${assetKey}`;
-                await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-Shopify-Access-Token': session.accessToken
-                    }
-                });
-                console.log(`Deleted ${assetKey} from theme ${themeId}`);
-            } catch (err) {
-                console.error("Asset delete error:", err.message || err);
-                // Ignore 404s if it's already deleted
-            }
+            // Delete from theme via GraphQL mutation — ignores errors if file doesn't exist
+            const deleteResponse = await admin.graphql(`#graphql
+              mutation themeFilesDelete($themeId: ID!, $files: [String!]!) {
+                themeFilesDelete(themeId: $themeId, files: $files) {
+                  deletedThemeFiles
+                  userErrors { code filename message }
+                }
+              }
+            `, {
+                variables: {
+                    themeId: themeGid,
+                    files: [assetKey]
+                }
+            });
+            const deleteData = await deleteResponse.json();
+            console.log(`Deleted ${assetKey} from theme ${themeGid}`, deleteData.data?.themeFilesDelete);
         }
 
         const updatedShopFinal = await prisma.shop.findUnique({
