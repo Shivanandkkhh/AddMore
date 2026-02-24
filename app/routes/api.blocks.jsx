@@ -1,5 +1,7 @@
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import fs from "fs";
+import path from "path";
 
 export const action = async ({ request }) => {
     const { admin, session } = await authenticate.admin(request);
@@ -103,63 +105,114 @@ export const action = async ({ request }) => {
             }).catch(e => { /* Ignore if it doesn't exist */ });
         }
 
-        // 4. Sync with Shopify App Metafields
-        const updatedShop = await prisma.shop.findUnique({
+        // 4. Fetch the main theme ID using GraphQL
+        const themesResponse = await admin.graphql(`#graphql
+          query {
+            themes(first: 10, roles: [MAIN]) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
+          }
+        `);
+
+        const themesData = await themesResponse.json();
+        const mainThemeNode = themesData.data.themes.edges[0]?.node;
+
+        if (!mainThemeNode) {
+            throw new Error("Could not find the main theme to inject assets into.");
+        }
+
+        // Extract ID from gid://shopify/Theme/123456789
+        const themeId = mainThemeNode.id.split('/').pop();
+        const assetKey = `sections/addmore-${blockHandle}.liquid`;
+
+        if (actionType === "activate") {
+            // Read the template from local backend storage
+            const filePath = path.join(process.cwd(), "app", "theme-assets", "blocks", `${blockHandle}.liquid`);
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`Template for ${blockHandle} not found on server.`);
+            }
+            const liquidContent = fs.readFileSync(filePath, "utf8");
+
+            // Inject into theme using GraphQL ThemeFiles mutation
+            const assetUploadResponse = await admin.graphql(`#graphql
+              mutation themeFilesUpsert($files: [OnlineStoreThemeFilesUpsertFileInput!]!, $themeId: ID!) {
+                themeFilesUpsert(files: $files, themeId: $themeId) {
+                  upsertedThemeFiles {
+                    filename
+                  }
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              }
+            `, {
+                variables: {
+                    themeId: mainThemeNode.id,
+                    files: [
+                        {
+                            body: {
+                                type: "TEXT",
+                                value: liquidContent
+                            },
+                            filename: assetKey
+                        }
+                    ]
+                }
+            });
+
+            const uploadData = await assetUploadResponse.json();
+            if (uploadData.data?.themeFilesUpsert?.userErrors?.length > 0) {
+                console.error("Asset upload errors:", uploadData.data.themeFilesUpsert.userErrors);
+            }
+            console.log(`Injected ${assetKey} into theme ${themeId}`);
+        } else if (actionType === "deactivate") {
+            // Delete from theme using GraphQL
+            const assetDeleteResponse = await admin.graphql(`#graphql
+              mutation themeFilesDelete($files: [String!]!, $themeId: ID!) {
+                themeFilesDelete(files: $files, themeId: $themeId) {
+                  deletedThemeFiles {
+                    filename
+                  }
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              }
+            `, {
+                variables: {
+                    themeId: mainThemeNode.id,
+                    files: [assetKey]
+                }
+            });
+            console.log(`Deleted ${assetKey} from theme ${themeId}`);
+        }
+
+        const updatedShopFinal = await prisma.shop.findUnique({
             where: { shopDomain: session.shop },
             include: { activatedBlocks: { include: { block: true } } }
         });
-
-        const activeBlockHandles = updatedShop.activatedBlocks.map(ab => ab.block.handle);
-
-        // Get the shop's GID for metafield ownership
-        const shopGidResponse = await admin.graphql(`#graphql
-          query { shop { id } }
-        `);
-        const shopGidData = await shopGidResponse.json();
-        const shopGid = shopGidData.data.shop.id;
-
-        const metafieldsSetResponse = await admin.graphql(
-            `#graphql
-      mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
-        metafieldsSet(metafields: $metafields) {
-          metafields {
-            key
-            namespace
-            value
-            createdAt
-            updatedAt
-          }
-          userErrors {
-            field
-            message
-            code
-          }
-        }
-      }`,
-            {
-                variables: {
-                    metafields: [
-                        {
-                            namespace: "marketplace",
-                            key: "active_blocks",
-                            type: "json",
-                            value: JSON.stringify(activeBlockHandles),
-                            ownerId: shopGid
-                        },
-                    ],
-                },
-            }
-        );
-
-        const metafieldData = await metafieldsSetResponse.json();
-        if (metafieldData.data?.metafieldsSet?.userErrors?.length > 0) {
-            console.error("Metafield user errors:", metafieldData.data.metafieldsSet.userErrors);
-        }
+        const activeBlockHandles = updatedShopFinal.activatedBlocks.map(ab => ab.block.handle);
 
         return Response.json({ success: true, activeBlockHandles });
 
     } catch (error) {
         console.error("Failed to process block activation:", error);
-        return Response.json({ error: "Failed to process block activation" }, { status: 500 });
+
+        // Check if this is a scope/permission error
+        if (error?.response?.status === 401 || error?.response?.status === 403 ||
+            (error instanceof Response && (error.status === 401 || error.status === 403))) {
+            return Response.json({
+                error: "Permission denied. Please refresh the app page to re-authenticate with updated permissions, then try again.",
+                requiresReauth: true
+            }, { status: 403 });
+        }
+
+        return Response.json({ error: "Failed to process block activation: " + (error?.message || String(error)) }, { status: 500 });
     }
 };

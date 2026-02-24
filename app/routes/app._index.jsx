@@ -14,9 +14,9 @@ export const loader = async ({ request }) => {
     try {
       const b1 = await prisma.block.create({ data: { handle: "hero-01", name: "Hero Section", isFree: true, basePrice: 0 } });
       const b2 = await prisma.block.create({ data: { handle: "testimonials-01", name: "Testimonials Section", isFree: true, basePrice: 0 } });
-      const b3 = await prisma.block.create({ data: { handle: "reels-01", name: "UGC Reels", isFree: false, basePrice: 9.0 } });
+      const b3 = await prisma.block.create({ data: { handle: "reels-01", name: "UGC Reels", isFree: true, basePrice: 0 } });
       const b4 = await prisma.block.create({ data: { handle: "before-after-01", name: "Before & After", isFree: false, basePrice: 7.0 } });
-      const b5 = await prisma.block.create({ data: { handle: "featured-collection", name: "Featured Collection", isFree: false, basePrice: 5.0 } });
+      const b5 = await prisma.block.create({ data: { handle: "featured-collection", name: "Featured Collection", isFree: true, basePrice: 0 } });
 
       const bun1 = await prisma.bundle.create({ data: { name: "Conversion Pack", price: 19.0, billingInterval: "MONTHLY" } });
       await prisma.bundleBlock.createMany({
