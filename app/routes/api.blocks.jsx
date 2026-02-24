@@ -139,7 +139,7 @@ export const action = async ({ request }) => {
 
             // Inject into theme using pure REST fetch
             try {
-                const url = `https://${session.shop}/admin/api/2024-01/themes/${themeId}/assets.json`;
+                const url = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json`;
                 const response = await fetch(url, {
                     method: 'PUT',
                     headers: {
@@ -165,7 +165,7 @@ export const action = async ({ request }) => {
         } else if (actionType === "deactivate") {
             // Delete from theme using pure REST fetch
             try {
-                const url = `https://${session.shop}/admin/api/2024-01/themes/${themeId}/assets.json?asset[key]=${assetKey}`;
+                const url = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json?asset[key]=${assetKey}`;
                 const response = await fetch(url, {
                     method: 'DELETE',
                     headers: {
