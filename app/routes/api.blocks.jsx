@@ -137,60 +137,34 @@ export const action = async ({ request }) => {
             }
             const liquidContent = fs.readFileSync(filePath, "utf8");
 
-            // Inject into theme using GraphQL ThemeFiles mutation
-            const assetUploadResponse = await admin.graphql(`#graphql
-              mutation themeFilesUpsert($files: [OnlineStoreThemeFilesUpsertFileInput!]!, $themeId: ID!) {
-                themeFilesUpsert(files: $files, themeId: $themeId) {
-                  upsertedThemeFiles {
-                    filename
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
-                }
-              }
-            `, {
-                variables: {
-                    themeId: mainThemeNode.id,
-                    files: [
-                        {
-                            body: {
-                                type: "TEXT",
-                                value: liquidContent
-                            },
-                            filename: assetKey
-                        }
-                    ]
-                }
-            });
+            // Inject into theme using REST Asset API
+            const asset = new admin.rest.resources.Asset({ session: session });
+            asset.theme_id = themeId;
+            asset.key = assetKey;
+            asset.value = liquidContent;
 
-            const uploadData = await assetUploadResponse.json();
-            if (uploadData.data?.themeFilesUpsert?.userErrors?.length > 0) {
-                console.error("Asset upload errors:", uploadData.data.themeFilesUpsert.userErrors);
+            try {
+                await asset.save({
+                    update: true,
+                });
+                console.log(`Injected ${assetKey} into theme ${themeId}`);
+            } catch (err) {
+                console.error("Asset upload error details:", err.response?.body || err);
+                throw new Error("Failed to upload asset via REST API: " + (err.response?.body?.errors?.asset?.[0] || err.message));
             }
-            console.log(`Injected ${assetKey} into theme ${themeId}`);
         } else if (actionType === "deactivate") {
-            // Delete from theme using GraphQL
-            const assetDeleteResponse = await admin.graphql(`#graphql
-              mutation themeFilesDelete($files: [String!]!, $themeId: ID!) {
-                themeFilesDelete(files: $files, themeId: $themeId) {
-                  deletedThemeFiles {
-                    filename
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
-                }
-              }
-            `, {
-                variables: {
-                    themeId: mainThemeNode.id,
-                    files: [assetKey]
-                }
-            });
-            console.log(`Deleted ${assetKey} from theme ${themeId}`);
+            // Delete from theme using REST API
+            try {
+                await admin.rest.resources.Asset.delete({
+                    session: session,
+                    theme_id: themeId,
+                    asset: { "key": assetKey },
+                });
+                console.log(`Deleted ${assetKey} from theme ${themeId}`);
+            } catch (err) {
+                console.error("Asset delete error:", err.response?.body || err);
+                // Ignore 404s if it's already deleted
+            }
         }
 
         const updatedShopFinal = await prisma.shop.findUnique({
