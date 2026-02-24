@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 export const action = async ({ request }) => {
-    const { admin, session } = await authenticate.admin(request);
+    const { session } = await authenticate.admin(request);
     const formData = await request.formData();
 
     const actionType = formData.get("actionType");
@@ -102,31 +102,31 @@ export const action = async ({ request }) => {
                         blockId: block.id
                     }
                 }
-            }).catch(e => { /* Ignore if it doesn't exist */ });
+            }).catch(() => { /* Ignore if it doesn't exist */ });
         }
 
-        // 4. Fetch the main theme ID using GraphQL
-        const themesResponse = await admin.graphql(`#graphql
-          query {
-            themes(first: 10, roles: [MAIN]) {
-              edges {
-                node {
-                  id
-                }
-              }
+        // 4. Fetch the main theme ID using REST API directly (avoids GraphQL GID bridging issues)
+        const themesListUrl = `https://${session.shop}/admin/api/2025-10/themes.json?role=main`;
+        const themesListResponse = await fetch(themesListUrl, {
+            headers: {
+                'X-Shopify-Access-Token': session.accessToken,
+                'Content-Type': 'application/json'
             }
-          }
-        `);
+        });
 
-        const themesData = await themesResponse.json();
-        const mainThemeNode = themesData.data.themes.edges[0]?.node;
+        if (!themesListResponse.ok) {
+            const themesErr = await themesListResponse.json().catch(() => ({}));
+            throw new Error(`Could not fetch themes: ${JSON.stringify(themesErr)}`);
+        }
 
-        if (!mainThemeNode) {
+        const themesListData = await themesListResponse.json();
+        const mainTheme = themesListData.themes?.[0];
+
+        if (!mainTheme) {
             throw new Error("Could not find the main theme to inject assets into.");
         }
 
-        // Extract ID from gid://shopify/Theme/123456789
-        const themeId = mainThemeNode.id.split('/').pop();
+        const themeId = mainTheme.id;
         const assetKey = `sections/addmore-${blockHandle}.liquid`;
 
         if (actionType === "activate") {
@@ -166,7 +166,7 @@ export const action = async ({ request }) => {
             // Delete from theme using pure REST fetch
             try {
                 const url = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json?asset[key]=${assetKey}`;
-                const response = await fetch(url, {
+                await fetch(url, {
                     method: 'DELETE',
                     headers: {
                         'X-Shopify-Access-Token': session.accessToken
