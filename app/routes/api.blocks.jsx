@@ -105,7 +105,10 @@ export const action = async ({ request }) => {
             }).catch(() => { /* Ignore if it doesn't exist */ });
         }
 
-        // 4. Fetch the main theme ID via GraphQL (uses the authenticated admin client — no raw token needed)
+        // 4. Fetch the main theme ID via GraphQL.
+        //    This also forces a token refresh (via admin client) if the offline token
+        //    has rotated under `expiringOfflineAccessTokens: true`, writing the fresh
+        //    token back to the Prisma session storage before we use it below.
         const themesResponse = await admin.graphql(`#graphql
           query {
             themes(first: 1, roles: [MAIN]) {
@@ -122,6 +125,20 @@ export const action = async ({ request }) => {
             throw new Error("Could not find the main theme to inject assets into.");
         }
 
+        // Extract the numeric theme ID from the GID (gid://shopify/OnlineStoreTheme/123456)
+        const themeId = themeGid.split('/').pop();
+
+        // Re-read the offline session from Prisma — the graphql() call above may have
+        // refreshed an expired token and written the new one to storage.
+        const freshSession = await prisma.session.findFirst({
+            where: { shop: session.shop, isOnline: false },
+            orderBy: { expires: 'desc' }
+        });
+        const accessToken = freshSession?.accessToken;
+        if (!accessToken) {
+            throw new Error("No valid offline access token found. Please re-install the app.");
+        }
+
         const assetKey = `sections/addmore-${blockHandle}.liquid`;
 
         if (actionType === "activate") {
@@ -132,44 +149,30 @@ export const action = async ({ request }) => {
             }
             const liquidContent = fs.readFileSync(filePath, "utf8");
 
-            // Upload to theme via GraphQL mutation (admin client handles auth internally)
-            const uploadResponse = await admin.graphql(`#graphql
-              mutation themeFilesUpsert($themeId: ID!, $files: [OnlineStoreThemeFilesUpsertFileInput!]!) {
-                themeFilesUpsert(themeId: $themeId, files: $files) {
-                  upsertedThemeFiles { filename }
-                  userErrors { code filename message }
-                }
-              }
-            `, {
-                variables: {
-                    themeId: themeGid,
-                    files: [{ filename: assetKey, body: { type: "TEXT", value: liquidContent } }]
-                }
+            // Upload to the theme via REST Asset API using the fresh offline token
+            const uploadUrl = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json`;
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Shopify-Access-Token': accessToken
+                },
+                body: JSON.stringify({ asset: { key: assetKey, value: liquidContent } })
             });
-            const uploadData = await uploadResponse.json();
-            const uploadErrors = uploadData.data?.themeFilesUpsert?.userErrors;
-            if (uploadErrors?.length > 0) {
-                throw new Error(`Failed to upload theme file: ${JSON.stringify(uploadErrors)}`);
+            if (!uploadRes.ok) {
+                const errBody = await uploadRes.json().catch(() => ({}));
+                throw new Error(`Failed to upload theme asset: ${JSON.stringify(errBody)}`);
             }
-            console.log(`Injected ${assetKey} into theme ${themeGid}`);
+            console.log(`Injected ${assetKey} into theme ${themeId}`);
 
         } else if (actionType === "deactivate") {
-            // Delete from theme via GraphQL mutation — ignores errors if file doesn't exist
-            const deleteResponse = await admin.graphql(`#graphql
-              mutation themeFilesDelete($themeId: ID!, $files: [String!]!) {
-                themeFilesDelete(themeId: $themeId, files: $files) {
-                  deletedThemeFiles
-                  userErrors { code filename message }
-                }
-              }
-            `, {
-                variables: {
-                    themeId: themeGid,
-                    files: [assetKey]
-                }
-            });
-            const deleteData = await deleteResponse.json();
-            console.log(`Deleted ${assetKey} from theme ${themeGid}`, deleteData.data?.themeFilesDelete);
+            // Delete the asset from the theme — ignore 404 if it was never uploaded
+            const deleteUrl = `https://${session.shop}/admin/api/2025-10/themes/${themeId}/assets.json?asset[key]=${encodeURIComponent(assetKey)}`;
+            await fetch(deleteUrl, {
+                method: 'DELETE',
+                headers: { 'X-Shopify-Access-Token': accessToken }
+            }).catch(() => {});
+            console.log(`Deleted ${assetKey} from theme ${themeId}`);
         }
 
         const updatedShopFinal = await prisma.shop.findUnique({
